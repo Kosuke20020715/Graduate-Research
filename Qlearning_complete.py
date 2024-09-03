@@ -23,7 +23,7 @@ def hiv_model(X, V, Y, Z, action):
     dV = (1 - action) * N * mu_z * Z - k1 * X * V - mu_v * V
 
     # 時間ステップ分の更新
-    dt = 0.15  # 1日ごとのシミュレーション
+    dt = 0.01  # 1日ごとのシミュレーション
     X_new = X + dX * dt
     V_new = V + dV * dt
     Y_new = Y + dY * dt
@@ -43,22 +43,29 @@ def equasion(action):
     V_vals_0 = []
     Y_vals_0 = []
     Z_vals_0 = []
-
+    steps = 0
+    max_steps = 500
     for episode in range(NUM_EPISODES):
-        if episode == 0:
-            X, V, Y, Z = 1000, 1, 1, 0.01
-            X_vals_0.append(X)
-            V_vals_0.append(V)
-            Y_vals_0.append(Y)
-            Z_vals_0.append(Z)
+        done = False
+        while not done:
+            if episode == 0 and steps == 0:
+                X, V, Y, Z = 1000, 1, 1, 0.01
+                X_vals_0.append(X)
+                V_vals_0.append(V)
+                Y_vals_0.append(Y)
+                Z_vals_0.append(Z)
 
-        else:
-            observation_next = hiv_model(X, V, Y, Z, action)
-            X, V, Y, Z = observation_next  # X,V,Y,Zの更新
-            X_vals_0.append(X)
-            V_vals_0.append(V)
-            Y_vals_0.append(Y)
-            Z_vals_0.append(Z)
+            else:
+                observation_next = hiv_model(X, V, Y, Z, action)
+                X, V, Y, Z = observation_next  # X,V,Y,Zの更新
+                X_vals_0.append(X)
+                V_vals_0.append(V)
+                Y_vals_0.append(Y)
+                Z_vals_0.append(Z)
+            
+            done = steps >= max_steps
+            steps += 1
+
     return X_vals_0,V_vals_0,Y_vals_0,Z_vals_0
 
 # それぞれの行動に対する結果を取得
@@ -112,68 +119,65 @@ def q_learning():
     Y_vals = []
     Z_vals = []
     action_list = []
-    for episode in range(NUM_EPISODES):
-        if episode == 0:
-            X, V, Y, Z = 1000, 1, 1, 0.01
-            X_vals.append(X)
-            V_vals.append(V)
-            Y_vals.append(Y)
-            Z_vals.append(Z)
+    X_mean = []
+    Y_mean = []
+    Z_mean = []
+    V_mean = []
 
+    X, V, Y, Z = 1000, 1, 1, 0.01
+    for episode in range(NUM_EPISODES):
+        X_vals.append(X)
+        V_vals.append(V)
+        Y_vals.append(Y)
+        Z_vals.append(Z)
+
+        done = False
+        max_steps = 500 #最大のステップ
+        steps = 0 #初期のステップ
+        while not done:
             state = digitize_state(X, V)  # 初期の状態のインデックス
-            tau = 1.0#初期の計算温度
+            tau = 1.0   #初期の計算温度
             action, action_index = decide_action(state,tau)  # 行動とそのインデックスを決める
-            action_list.append(action)
             # 温度係数の更新(指数ver)
             T_0 = 1.0
-            k=0.1
+            k=0.01
             tau = T_0 * np.exp(-k * episode)
             # tau = tau * 0.999 計算温度の減少(定数ver)
-
-            observation_next = hiv_model(X, V, Y, Z, action)
-            X_new, V_new = observation_next[0:2]  # X,Vの更新
-
+            observation_next = hiv_model(X, V, Y, Z, action) #状態の取得
+            X_new, V_new, Y_new, Z_new = observation_next # X,V,Y,Zの更新
             state_next = digitize_state(X_new, V_new)  # 新たな状態のインデックス
-            prev_action = 0
+
+            if episode==0 and steps == 0:
+                prev_action = 0  #初期の投薬量
+                gamma = 0.5 #初期の割引率
+            else:
+                prev_action = action #行動の更新　
+                gamma = 0 #以降の割引率
+
             reward = np.log(V / V_new) - (action - prev_action) * np.log(action+1e-8)  # actionが0になるのを防ぐ
 
-            prev_action = action
-            q_table[state, action_index] = update_Qtable(state, action_index, reward, state_next, 0.5)
-
+            q_table[state, action_index] = update_Qtable(state, action_index, reward, state_next, gamma)
+            done = steps >= max_steps #最大ステップで終了
             state = state_next
-            X, V = X_new, V_new
-        
-        else:
-            action, action_index = decide_action(state,tau)  # 行動とそのインデックスを決める
+            X, V, Y, Z = X_new, V_new, Y_new, Z_new #状態の更新
+            steps += 1 #stepの更新
             action_list.append(action)
-            # tau = tau * 0.999計算温度の調整
-            # 温度係数の更新(指数ver)
-            T_0 = 1.0
-            k=0.1
-            tau = T_0 * np.exp(-k * episode)
 
-            observation_next = hiv_model(X, V, Y, Z, action)
-            X_new, V_new, Y, Z = observation_next  # X,V,Y,Zの更新
+        X_vals.append(X)
+        V_vals.append(V)
+        Y_vals.append(Y)
+        Z_vals.append(Z)
 
-            state_next = digitize_state(X_new, V_new)  # 新たな状態のインデックス
+        X_mean.append(np.mean(X_vals))
+        V_mean.append(np.mean(V_vals))
+        Y_mean.append(np.mean(Y_vals))
+        Z_mean.append(np.mean(Z_vals))
 
-            reward = np.log(V / V_new) - (action - prev_action) * np.log(action+1e-8)
 
-            prev_action = action
 
-            q_table[state, action_index] = update_Qtable(state, action_index, reward, state_next, 0)
+    return X_mean, V_mean, Y_mean, Z_mean ,action_list
 
-            state = state_next
-            X, V = X_new, V_new
-
-            X_vals.append(X)
-            V_vals.append(V)
-            Y_vals.append(Y)
-            Z_vals.append(Z)
-
-    return X_vals, V_vals, Y_vals,Z_vals,action_list
-
-X_vals, V_vals, Y_vals, Z_vals, action_list = q_learning()
+X_mean, V_mean, Y_mean, Z_mean, action_list = q_learning()
 
 ################################################################ここまでQ学習#########################################################
 
@@ -184,7 +188,7 @@ plt.figure(figsize=(10, 10))
 plt.subplot(2, 2, 1)
 plt.plot(X_vals_0, label='X (Healthy CD4+ T cells) action=0',color='blue')
 plt.plot(X_vals_01, label='X (Healthy CD4+ T cells) action=0.1', linestyle='--',color='blue')
-plt.plot(X_vals, label='X (Healthy CD4+ T cells) Q-learning', linestyle='-.',color='blue')
+plt.plot(X_mean, label='X (Healthy CD4+ T cells) Q-learning', linestyle='-.',color='blue')
 plt.xlabel('days')
 plt.ylabel('X')
 plt.title('X over 500 Episodes')
@@ -194,7 +198,7 @@ plt.legend()
 plt.subplot(2, 2, 2)
 plt.plot(V_vals_0, label='V (free Virus) action=0', color='orange')
 plt.plot(V_vals_01, label='V (free Virus) action=0.1', color='orange', linestyle='--')
-plt.plot(V_vals, label='V (free Virus) Q-learning', color='orange', linestyle='-.')
+plt.plot(V_mean, label='V (free Virus) Q-learning', color='orange', linestyle='-.')
 plt.xlabel('days')
 plt.ylabel('V')
 plt.title('V over 500 Episodes')
@@ -204,7 +208,7 @@ plt.legend()
 plt.subplot(2, 2, 3)
 plt.plot(Y_vals_0, label='Y (infected Virus) action=0', color='red')
 plt.plot(Y_vals_01, label='Y (infected Virus) action=0.1', color='red', linestyle='--')
-plt.plot(Y_vals, label='Y (infected Virus) Q-learning', color='red', linestyle='-.')
+plt.plot(Y_mean, label='Y (infected Virus) Q-learning', color='red', linestyle='-.')
 plt.xlabel('days')
 plt.ylabel('Y')
 plt.title('Y over 500 Episodes')
@@ -214,7 +218,7 @@ plt.legend()
 plt.subplot(2, 2, 4)
 plt.plot(Z_vals_0, label='Z (Virus) action=0', color='green')
 plt.plot(Z_vals_01, label='Z (Virus) action=0.1', color='green', linestyle='--')
-plt.plot(Z_vals, label='Z (Virus) Q-learning', color='green', linestyle='-.')
+plt.plot(Z_mean, label='Z (Virus) Q-learning', color='green', linestyle='-.')
 plt.xlabel('days')
 plt.ylabel('Z')
 plt.title('Z over 500 Episodes')
@@ -226,14 +230,14 @@ plt.show()
 # データをcsvに保存
 
 data = {
-    'X_vals': X_vals,
-    'V_vals': V_vals,
-    'Y_vals': Y_vals,
-    'Z_vals': Z_vals,
+    'X_vals': X_mean,
+    'V_vals': V_mean,
+    'Y_vals': Y_mean,
+    'Z_vals': Z_mean,
     'action': action_list # actionのリスト
 }
 print(len(data["X_vals"]))
 df = pd.DataFrame(data)
 
 # CSVファイルとして保存
-df.to_csv(r'C:\Users\User\Documents\B4輪講\photo_data\hiv_simulation_complete_results.csv', index=False)
+# df.to_csv(r'C:\Users\User\Documents\B4輪講\photo_data\hiv_simulation_complete_results.csv', index=False)

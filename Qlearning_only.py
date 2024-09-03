@@ -87,9 +87,12 @@ def q_learning():
             Z_vals.append(Z)
 
             state = digitize_state(X, V)  # 初期の状態のインデックス
-            tau = 1.0#初期の計算温度
+            tau = 1.0
             action, action_index = decide_action(state,tau)  # 行動とそのインデックスを決める
-            tau = tau * 0.99# 計算温度の減少
+            # 温度係数の更新(指数ver)
+            T_0 = 1.0
+            k=0.01
+            tau = T_0 * np.exp(-k * episode)
 
             observation_next = hiv_model(X, V, Y, Z, action)
             X_new, V_new = observation_next[0:2]  # X,Vの更新
@@ -106,7 +109,10 @@ def q_learning():
         
         else:
             action, action_index = decide_action(state,tau)  # 行動とそのインデックスを決める
-            tau = tau * 0.99#計算温度の調整
+            # 温度係数の更新(指数ver)
+            T_0 = 1.0
+            k=0.01
+            tau = T_0 * np.exp(-k * episode)
 
             observation_next = hiv_model(X, V, Y, Z, action)
             X_new, V_new, Y, Z = observation_next  # X,V,Y,Zの更新

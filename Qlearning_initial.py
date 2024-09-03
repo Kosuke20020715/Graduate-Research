@@ -22,7 +22,7 @@ def hiv_model(X, V, Y, Z, action):
     dV = (1 - action) * N * mu_z * Z - k1 * X * V - mu_v * V
 
     dt = 0.15 # 刻み幅
-    X_new = X + dX * dt
+    X_new = min(X + dX * dt,1500)
     V_new = V + dV * dt
     Y_new = Y + dY * dt
     Z_new = Z + dZ * dt
@@ -88,7 +88,7 @@ def q_learning(X, V, Y, Z):
             # tau = tau * 0.999
             # 温度係数の更新(指数ver)
             T_0 = 1.0
-            k=0.1
+            k=0.01
             tau = T_0 * np.exp(-k * episode)
 
             observation_next = hiv_model(X, V, Y, Z, action)
@@ -114,7 +114,7 @@ def q_learning(X, V, Y, Z):
             # 温度係数の更新(指数ver)
 
             T_0 = 1.0
-            k=0.1
+            k=0.01
             tau = T_0 * np.exp(-k * episode)
 
             observation_next = hiv_model(X, V, Y, Z, action)
@@ -148,7 +148,7 @@ Y_mean, Y_std = 2, 1
 Z_mean, Z_std = 0.01, 0.01
 V_mean, V_std = 1, 1
 
-X_initials = np.clip(np.random.normal(X_mean, X_std, 200), 600, 3000)#600-3000
+X_initials = np.clip(np.random.normal(X_mean, X_std, 200), 600, 1500)#600-3000
 Y_initials = np.clip(np.random.normal(Y_mean, Y_std, 200), 0, None)
 Z_initials = np.clip(np.random.normal(Z_mean, Z_std, 200), 0, None)
 V_initials = np.clip(np.random.normal(V_mean, V_std, 200), 1e-12, 5)#0.05-5
@@ -222,4 +222,4 @@ print(len(data["X_vals"]))
 df = pd.DataFrame(data)
 
 # CSVファイルとして保存
-df.to_csv(r'C:\Users\User\Documents\B4輪講\photo_data\hiv_simulation_initial_results.csv', index=False)
+# df.to_csv(r'C:\Users\User\Documents\B4輪講\photo_data\hiv_simulation_initial_results.csv', index=False)

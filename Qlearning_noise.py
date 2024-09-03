@@ -90,7 +90,7 @@ def q_learning(X, V, Y, Z):
             # tau = tau * 0.999
             # 温度係数の更新(指数ver)
             T_0 = 1.0
-            k=0.1
+            k=0.01
             tau = T_0 * np.exp(-k * episode)
 
             #ホワイトノイズを印加する
@@ -131,7 +131,7 @@ def q_learning(X, V, Y, Z):
             # 温度係数の更新(指数ver)
 
             T_0 = 1.0
-            k=0.1
+            k=0.01
             tau = T_0 * np.exp(-k * episode)
 
             #ホワイトノイズを印加する

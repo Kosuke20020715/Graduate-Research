@@ -28,7 +28,7 @@ def hiv_model(X, V, Y, Z, action):
     dV = (1 - action) * N * mu_z * Z - k1 * X * V - mu_v * V
 
     # 時間ステップ分の更新
-    dt = 0.15  # 1日ごとのシミュレーション
+    dt = 0.01  # 1日ごとのシミュレーション
     X_new = X + dX * dt
     V_new = V + dV * dt
     Y_new = Y + dY * dt
@@ -112,7 +112,8 @@ def train_dqn(episodes=500):
         state = [X, V, Y, Z]
         done = False
         total_reward = 0
-        print(e)
+        max_steps = 200 #ステップ数
+        steps = 0 #初期のステップ
         while not done:
             action_idx = agent.act(state)
             action = actions[action_idx]
@@ -120,10 +121,11 @@ def train_dqn(episodes=500):
             X_new, V_new, Y_new, Z_new = next_state
             reward = np.log(V / V_new) - (action - action_idx) * np.log(action + 1e-8)
             total_reward += reward
-            done = e == episodes - 1
+            done = steps >= max_steps #最大ステップで終了
             agent.remember(state, action_idx, reward, next_state, done)
             state = next_state
             X, V, Y, Z = X_new, V_new, Y_new, Z_new
+            steps += 1
             
         X_vals.append(X)
         V_vals.append(V)
